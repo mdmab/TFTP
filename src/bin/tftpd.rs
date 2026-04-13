@@ -4,6 +4,8 @@ use std::{
     hint::unreachable_unchecked,
     io::{Error, ErrorKind},
     net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket},
+    path::PathBuf,
+    sync::Arc,
     thread,
     time::Duration,
 };
@@ -17,13 +19,22 @@ use tftp::{
     },
     elog, elog_fatal,
     tftpcl_util::get_file,
-    tftpd_util::{receive_file, send_file},
+    tftpd_util::{help_info_tftpd, parse_args, receive_file, send_file},
 };
 
 fn main() {
-    if args().len() > 1 {
-        elog_fatal!(-1, "Too many arguments provided.");
-    }
+    /* Parsing args. */
+    let arg_list: Vec<String> = args().collect();
+    let root_path: Arc<PathBuf> = match parse_args(&arg_list[1..]) {
+        Err(err) => {
+            elog_fatal!(-1, "{}", err);
+        }
+        Ok(None) => {
+            help_info_tftpd();
+            return;
+        }
+        Ok(Some(path)) => Arc::new(path),
+    };
 
     /* Default listener socket at port 69. */
     const PORT: u16 = 69;
@@ -153,6 +164,8 @@ fn main() {
 
         /* Calling appropriate routine for appropritate request. */
         // TODO: Ability to set root folder.
+        let root_dir: Arc<PathBuf> = root_path.clone();
+
         match packet {
             TftpPacket::Error {
                 error_code,
@@ -163,7 +176,7 @@ fn main() {
             }
             TftpPacket::Rrq { filename, mode } => {
                 thread::spawn(move || {
-                    if let Err(err) = send_file(&filename, &mode, &socket) {
+                    if let Err(err) = send_file(root_dir, &filename, &mode, &socket) {
                         elog!("{}", err);
                     } else {
                         elog!("Successfully sent {} to {}.", filename, client_addr);
@@ -172,7 +185,7 @@ fn main() {
             }
             TftpPacket::Wrq { filename, mode } => {
                 thread::spawn(move || {
-                    if let Err(err) = receive_file(&filename, &mode, &socket) {
+                    if let Err(err) = receive_file(root_dir, &filename, &mode, &socket) {
                         elog!("{}", err);
                     } else {
                         elog!("Successfully received {} from {}.", filename, client_addr);

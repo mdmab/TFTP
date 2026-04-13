@@ -8,7 +8,9 @@ use std::{
     net::{AddrParseError, IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket},
     os::unix::fs::MetadataExt,
     panic,
+    path::PathBuf,
     process::exit,
+    sync::Arc,
     time::Duration,
 };
 
@@ -58,7 +60,6 @@ pub fn parse_args(
 ) -> Result<Option<(TftpAction, String, String, SocketAddr)>, String> {
     /* "args" is the argument list with the first entry, which is the program name, removed. */
     if args.len() == 0 {
-        help_info_tftpcl();
         return Ok(None);
     }
 
@@ -69,8 +70,6 @@ pub fn parse_args(
     let mut src_filename: Option<String> = None;
     let mut dest_filename: Option<String> = None;
     let mut server_addr: Option<SocketAddr> = None;
-
-    let mut help: bool = false;
 
     let mut option: Option<&str> = None;
     let mut arg_q: VecDeque<&String> = VecDeque::from_iter(args.iter());
@@ -102,14 +101,6 @@ pub fn parse_args(
                     }
 
                     tftp_action = Some(TftpAction::Put);
-                }
-                "--help" => {
-                    if help {
-                        error_list.push(format!("--help appread more than once."));
-                        continue;
-                    }
-
-                    help = true;
                 }
                 "-s" => {
                     set_option!(arg.as_str(), option, src_filename, error_list);
@@ -223,15 +214,6 @@ pub fn parse_args(
         ));
     }
 
-    if help {
-        if args.len() == 1 {
-            return Ok(None);
-        }
-
-        error_list
-            .push("Option \"--help\" must appear alone without any other argument(s).".to_owned());
-    }
-
     if !error_list.is_empty() {
         return Err(error_list.join("\n"));
     }
@@ -281,6 +263,7 @@ pub fn get_file(
     let mut total_received_size: usize = 0;
 
     receive_file(
+        Arc::new(PathBuf::from(".")),
         &dest_filename,
         mode,
         &socket,
@@ -379,6 +362,7 @@ pub fn put_file(
                 let mut sent_size: usize = 0;
 
                 send_file(
+                    Arc::new(PathBuf::from(".")),
                     &src_filename,
                     mode,
                     &socket,
@@ -457,7 +441,7 @@ pub fn help_info_tftpcl() {
         \t                          to the target/server machine. The file is saved there with the\n\
         \t                          name dest_name.\n\
         Optional options:\n\
-        \t--help                    Show help page.\n\
+        \t--help                    Show help page.\
         "
     );
 }

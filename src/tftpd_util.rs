@@ -2,6 +2,8 @@ use std::{
     fs::{File, OpenOptions},
     io::{BufReader, Error, ErrorKind, Read, Write},
     net::{SocketAddr, UdpSocket},
+    path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use crate::{
@@ -15,7 +17,39 @@ use crate::{
     elog,
 };
 
-pub fn send_file(filename: &str, mode: &str, socket: &UdpSocket) -> Result<(), TftpError> {
+pub fn parse_args(args: &[String]) -> Result<Option<PathBuf>, String> {
+    /* "args" is the list of arguments after the program name. */
+    /* If no arguments are provided, show the help page instead. */
+    if args.len() == 0 {
+        return Ok(None);
+    }
+
+    /* Only 1 argument is expected, which is the root folder of the server. */
+    let path: &Path = Path::new(&args[0]);
+    let mut err_list: Vec<String> = Vec::new();
+
+    if !path.is_dir() {
+        err_list.push("The directory name doesn't point to a valid directory.".to_owned());
+    }
+
+    /* Existence of any other argument is an error. */
+    for arg in &args[1..] {
+        err_list.push(format!("Unknown argument: {}", arg));
+    }
+
+    if !err_list.is_empty() {
+        return Err(err_list.join("\n"));
+    }
+
+    Ok(Some(path.to_owned()))
+}
+
+pub fn send_file(
+    root_dir: Arc<PathBuf>,
+    filename: &str,
+    mode: &str,
+    socket: &UdpSocket,
+) -> Result<(), TftpError> {
     /*
     * Check the validity of file name. If not valid, send an ERROR packet for access violation
       and terminate.
@@ -41,6 +75,7 @@ pub fn send_file(filename: &str, mode: &str, socket: &UdpSocket) -> Result<(), T
     println!("\nReceiver address: {}", socket.peer_addr()?);
 
     transmission::send_file(
+        root_dir,
         filename,
         mode,
         socket,
@@ -60,7 +95,12 @@ pub fn send_file(filename: &str, mode: &str, socket: &UdpSocket) -> Result<(), T
     )
 }
 
-pub fn receive_file(filename: &str, mode: &str, socket: &UdpSocket) -> Result<(), TftpError> {
+pub fn receive_file(
+    root_dir: Arc<PathBuf>,
+    filename: &str,
+    mode: &str,
+    socket: &UdpSocket,
+) -> Result<(), TftpError> {
     /*
     * Check the validity of file name. If not valid, send an ERROR packet for access violation
       and terminate.
@@ -90,6 +130,7 @@ pub fn receive_file(filename: &str, mode: &str, socket: &UdpSocket) -> Result<()
     println!("\nSender address: {}", socket.peer_addr()?);
 
     transmission::receive_file(
+        root_dir,
         filename,
         mode,
         socket,
@@ -108,4 +149,13 @@ pub fn receive_file(filename: &str, mode: &str, socket: &UdpSocket) -> Result<()
             );
         },
     )
+}
+
+pub fn help_info_tftpd() {
+    println!(
+        "\
+        \"tftpd\" TFTP server command line utility.\n\
+        Syntax:  tftpcl [root_dir]\
+        "
+    );
 }

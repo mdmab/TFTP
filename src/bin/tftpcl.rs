@@ -2,7 +2,11 @@
  * This file provides the main function for "tftpcl", the tftp client.
  */
 
-use std::{env, net::SocketAddr, process::exit};
+use std::{
+    env::{self, args},
+    net::SocketAddr,
+    process::exit,
+};
 
 use tftp::{
     core::TftpError,
@@ -15,7 +19,7 @@ fn main() {
      * Format for tftpcl: tftpcl [get|put] [filename] [server_address_ipv4]
      */
 
-    let arg_list: Vec<String> = env::args().collect();
+    let arg_list: Vec<String> = args().collect();
 
     let (action, src_filename, dest_filename, server_addr): (
         TftpAction,

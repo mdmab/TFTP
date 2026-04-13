@@ -5,6 +5,8 @@ use std::{
     io::{BufReader, BufWriter, Error, ErrorKind, Read, Write},
     net::{SocketAddr, UdpSocket},
     os::unix::fs::MetadataExt,
+    path::PathBuf,
+    sync::Arc,
 };
 
 use crate::core::{
@@ -19,6 +21,7 @@ use crate::core::{
   DATA packets and receiving ACK packets.
 */
 pub fn send_file<F>(
+    root_dir: Arc<PathBuf>,
     filename: &str,
     mode: &str,
     socket: &UdpSocket,
@@ -44,13 +47,15 @@ where
     * If the file couldn't be opened due to some reason, send an error packet without any
       retransmission and terminate the connection.
     */
+    let file_path: PathBuf = root_dir.as_ref().join(filename);
+
     let file: File = match OpenOptions::new()
         .read(true)
         .truncate(false)
         .write(false)
         .create(false)
         .append(false)
-        .open(filename)
+        .open(file_path)
     {
         Ok(file) => file,
         Err(err) => {
@@ -246,6 +251,7 @@ where
   DATA packets and sending ACK packets.
 */
 pub fn receive_file<F>(
+    root_dir: Arc<PathBuf>,
     dest_filename: &str,
     mode: &str,
     socket: &UdpSocket,
@@ -305,13 +311,14 @@ where
 
     /* Open a temporary file. On success, rename it to destination name. On error, remove it. */
     const TEMP_FILENAME: &str = ".tmp.tftpcl";
+    let temp_file_path: PathBuf = root_dir.as_ref().join(TEMP_FILENAME);
 
     let mut file_buf: BufWriter<File> = BufWriter::new(
         OpenOptions::new()
             .create(true)
             .write(true)
             .truncate(true)
-            .open(TEMP_FILENAME)
+            .open(&temp_file_path)
             .map_err(|err: Error| err.to_string())?,
     );
 
@@ -326,12 +333,12 @@ where
         let recv_packet: TftpPacket = match opcode_from_raw_data(&byte_arr[..rd_size])? {
             OPCODE_DATA | OPCODE_ERROR => {
                 TftpPacket::deserialize(&byte_arr[..rd_size]).map_err(|err: String| {
-                    _ = fs::remove_file(TEMP_FILENAME);
+                    _ = fs::remove_file(&temp_file_path);
                     err
                 })?
             }
             _ => {
-                _ = fs::remove_file(TEMP_FILENAME);
+                _ = fs::remove_file(&temp_file_path);
                 return Err(INVALID_DATA_ERROR.into());
             }
         };
@@ -368,7 +375,7 @@ where
 
                     /* Append the received data to file. */
                     file_buf.write_all(&data).map_err(|err: Error| {
-                        _ = fs::remove_file(TEMP_FILENAME);
+                        _ = fs::remove_file(&temp_file_path);
                         err.to_string()
                     })?;
 
@@ -430,11 +437,12 @@ where
 
     /* Flush any buffered bytes that are yet to be written. */
     file_buf.flush().map_err(|err: Error| {
-        _ = fs::remove_file(TEMP_FILENAME);
+        _ = fs::remove_file(&temp_file_path);
         err.to_string()
     })?;
 
     /* Rename the file. */
-    fs::rename(TEMP_FILENAME, dest_filename).map_err(|err: Error| err.to_string())?;
+    let dest_file_path: PathBuf = root_dir.as_ref().join(dest_filename);
+    fs::rename(&temp_file_path, &dest_file_path)?;
     Ok(())
 }
