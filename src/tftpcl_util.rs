@@ -53,8 +53,15 @@ pub enum TftpAction {
 /***********************************/
 
 /// Parses command line arguments for TFTP client CLI utility.
-pub fn parse_args(args: &[String]) -> Result<(TftpAction, String, String, SocketAddr), String> {
+pub fn parse_args(
+    args: &[String],
+) -> Result<Option<(TftpAction, String, String, SocketAddr)>, String> {
     /* "args" is the argument list with the first entry, which is the program name, removed. */
+    if args.len() == 0 {
+        help_info_tftpcl();
+        return Ok(None);
+    }
+
     let mut expect_option = true;
     let mut error_list: Vec<String> = Vec::new();
 
@@ -62,6 +69,8 @@ pub fn parse_args(args: &[String]) -> Result<(TftpAction, String, String, Socket
     let mut src_filename: Option<String> = None;
     let mut dest_filename: Option<String> = None;
     let mut server_addr: Option<SocketAddr> = None;
+
+    let mut help: bool = false;
 
     let mut option: Option<&str> = None;
     let mut arg_q: VecDeque<&String> = VecDeque::from_iter(args.iter());
@@ -93,6 +102,14 @@ pub fn parse_args(args: &[String]) -> Result<(TftpAction, String, String, Socket
                     }
 
                     tftp_action = Some(TftpAction::Put);
+                }
+                "--help" => {
+                    if help {
+                        error_list.push(format!("--help appread more than once."));
+                        continue;
+                    }
+
+                    help = true;
                 }
                 "-s" => {
                     set_option!(arg.as_str(), option, src_filename, error_list);
@@ -206,16 +223,25 @@ pub fn parse_args(args: &[String]) -> Result<(TftpAction, String, String, Socket
         ));
     }
 
+    if help {
+        if args.len() == 1 {
+            return Ok(None);
+        }
+
+        error_list
+            .push("Option \"--help\" must appear alone without any other argument(s).".to_owned());
+    }
+
     if !error_list.is_empty() {
         return Err(error_list.join("\n"));
     }
 
-    Ok((
+    Ok(Some((
         tftp_action.unwrap(),
         src_filename.unwrap(),
         dest_filename.unwrap(),
         server_addr.unwrap(),
-    ))
+    )))
 }
 
 /// Handles read requests (RRQ) from client to server.
@@ -412,4 +438,26 @@ pub fn put_file(
     }
 
     Ok(())
+}
+
+pub fn help_info_tftpcl() {
+    println!(
+        "\
+        \"tftpcl\" TFTP client command line utility.\n\
+        Syntax:  tftpcl [Option]... [Value]...\n\
+        Mandatory options:\n\
+        \t-s src_filename           Sets the name of the source file that has to be transferred.\n\
+        \t-d dest_filename          Sets the name the file received by client or server is to be\n\
+        \t                          saved in.\n\
+        \t-t target_addr            Sets the address of the target (server) machine.\n\
+        \t--get                     Receives/downloads a file with src_filename in the target/server\n\
+        \t                          machine. The file is saved with the name dest_filename after\n\
+        \t                          receiving.\n\
+        \t--put                     Sends/uploads a file with src_filename from the client machine\n\
+        \t                          to the target/server machine. The file is saved there with the\n\
+        \t                          name dest_name.\n\
+        Optional options:\n\
+        \t--help                    Show help page.\n\
+        "
+    );
 }

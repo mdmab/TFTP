@@ -7,7 +7,7 @@ use std::{env, net::SocketAddr, process::exit};
 use tftp::{
     core::TftpError,
     elog, elog_fatal,
-    tftpcl_util::{TftpAction, get_file, parse_args, put_file},
+    tftpcl_util::{TftpAction, get_file, help_info_tftpcl, parse_args, put_file},
 };
 
 fn main() {
@@ -26,7 +26,12 @@ fn main() {
         Err(msg) => {
             elog_fatal!(-1, "{}", msg);
         }
-        Ok(result) => result,
+        Ok(Some(result)) => result,
+        Ok(None) => {
+            /* If this return, someone just wanted to read help page. Terminate the program. */
+            help_info_tftpcl();
+            return;
+        }
     };
 
     println!(
