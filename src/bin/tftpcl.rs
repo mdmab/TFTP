@@ -1,0 +1,48 @@
+/*
+ * This file provides the main function for "tftpcl", the tftp client.
+ */
+
+use std::{env, net::SocketAddr, process::exit};
+
+use tftp::{
+    core::TftpError,
+    elog, elog_fatal,
+    tftpcl_util::{TftpAction, get_file, parse_args, put_file},
+};
+
+fn main() {
+    /*
+     * Format for tftpcl: tftpcl [get|put] [filename] [server_address_ipv4]
+     */
+
+    let arg_list: Vec<String> = env::args().collect();
+
+    let (action, src_filename, dest_filename, server_addr): (
+        TftpAction,
+        String,
+        String,
+        SocketAddr,
+    ) = match parse_args(&arg_list[1..]) {
+        Err(msg) => {
+            elog_fatal!(-1, "{}", msg);
+        }
+        Ok(result) => result,
+    };
+
+    println!(
+        "Action: {:?}, Source filename: {}, Destination filename: {}, Address: {}",
+        action, src_filename, dest_filename, server_addr
+    );
+
+    let result: Result<(), TftpError> = match action {
+        TftpAction::Get => get_file(src_filename, dest_filename, server_addr),
+        TftpAction::Put => put_file(src_filename, dest_filename, server_addr),
+    };
+
+    match result {
+        Err(err) => {
+            elog_fatal!(-1, "{}", err);
+        }
+        _ => {}
+    }
+}
