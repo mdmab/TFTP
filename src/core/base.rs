@@ -4,7 +4,6 @@ use std::{
     io::{self, Error, ErrorKind},
     net::{SocketAddr, UdpSocket},
     str::Utf8Error,
-    sync::atomic::fence,
 };
 
 /* Constants for opcode. */

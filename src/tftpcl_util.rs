@@ -1,28 +1,17 @@
-use core::error;
 use std::{
-    array::TryFromSliceError,
     collections::VecDeque,
-    env::{self, consts::EXE_EXTENSION},
-    fs::{self, File, OpenOptions},
-    io::{BufWriter, Error, ErrorKind, Write},
-    net::{AddrParseError, IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket},
-    os::unix::fs::MetadataExt,
-    panic,
+    net::{AddrParseError, Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket},
     path::PathBuf,
-    process::exit,
     sync::Arc,
     time::Duration,
 };
 
-use crate::{
-    core::{
-        DATA_BLOCK_SIZE, DEFAULT_RETRY_COUNT, DEFAULT_TIMEOUT_SEC, ERROR_CODE_ILLEGAL_OP,
-        ERROR_CODE_SEE_MSG, ETH_FRAME_LEN, FILENAME_ERROR, INVALID_DATA_ERROR, OPCODE_ACK,
-        OPCODE_DATA, OPCODE_ERROR, OPCODE_RRQ, OPCODE_WRQ, TftpError, TftpPacket,
-        error_msg_from_code, is_valid_filename, opcode_from_raw_data, recv_retry, send_retry,
-        transmission::{receive_file, send_file},
-    },
-    elog, elog_fatal,
+use crate::core::{
+    DEFAULT_RETRY_COUNT, DEFAULT_TIMEOUT_SEC, ERROR_CODE_ILLEGAL_OP, ERROR_CODE_SEE_MSG,
+    ETH_FRAME_LEN, FILENAME_ERROR, INVALID_DATA_ERROR, OPCODE_ACK, OPCODE_ERROR, TftpError,
+    TftpPacket, error_msg_from_code, is_valid_filename, opcode_from_raw_data, recv_retry,
+    send_retry,
+    transmission::{receive_file, send_file},
 };
 
 macro_rules! set_option {
@@ -36,13 +25,8 @@ macro_rules! set_option {
     };
 }
 
-const HELP_STR: &str =
-    "Syntax: tftpcl [get|put] [src_filename] [dest_filename] [server_address_ipv4/ipv6]";
-
 const FILENAME_MAXLEN: usize = 128;
 const TFTP_PORT_DEFAULT: u16 = 69;
-
-const TOTAL_ARG_COUNT: usize = 4;
 
 #[derive(Debug)]
 pub enum TftpAction {
@@ -245,7 +229,6 @@ pub fn get_file(
     /* For now, everything will be transmitted in octet mode. Others may be implemented later. */
     let mode: &str = "octet";
     let packet: TftpPacket;
-    let mut byte_arr: [u8; ETH_FRAME_LEN] = [0u8; ETH_FRAME_LEN];
 
     /* Send an RRQ packet to the server. Send to server at port 69. */
     packet = TftpPacket::Rrq {
@@ -303,7 +286,6 @@ pub fn put_file(
     /* For now, everything will be transmitted in octet mode. Others may be implemented later. */
     let mode: &str = "octet";
     let packet: TftpPacket;
-    let mut byte_arr: [u8; ETH_FRAME_LEN] = [0u8; ETH_FRAME_LEN];
 
     /* Send an WRQ packet to the server. Send to server at port 69. */
     packet = TftpPacket::Wrq {

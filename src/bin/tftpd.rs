@@ -1,24 +1,19 @@
 use std::{
-    array::TryFromSliceError,
     env::args,
-    hint::unreachable_unchecked,
-    io::{Error, ErrorKind},
+    io::Error,
     net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket},
     path::PathBuf,
     sync::Arc,
     thread,
-    time::Duration,
 };
 
 use tftp::{
     core::{
-        CORRUPTED_DATA_ERROR, DEFAULT_TIMEOUT_SEC, ERROR_CODE_ILLEGAL_OP, ERROR_CODE_SEE_MSG,
-        ETH_FRAME_LEN, INVALID_DATA_ERROR, OPCODE_ACK, OPCODE_DATA, OPCODE_ERROR, OPCODE_RRQ,
-        OPCODE_WRQ, TftpError, TftpPacket, error_msg_from_code, opcode_from_raw_data, recv_retry,
-        send_retry,
+        ERROR_CODE_ILLEGAL_OP, ERROR_CODE_SEE_MSG, ETH_FRAME_LEN, INVALID_DATA_ERROR, OPCODE_ACK,
+        OPCODE_DATA, OPCODE_ERROR, OPCODE_RRQ, OPCODE_WRQ, TftpError, TftpPacket,
+        error_msg_from_code, opcode_from_raw_data, recv_retry, send_retry,
     },
     elog, elog_fatal,
-    tftpcl_util::get_file,
     tftpd_util::{help_info_tftpd, parse_args, receive_file, send_file},
 };
 

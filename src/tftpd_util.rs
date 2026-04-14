@@ -1,20 +1,12 @@
 use std::{
-    fs::{File, OpenOptions},
-    io::{BufReader, Error, ErrorKind, Read, Write},
-    net::{SocketAddr, UdpSocket},
+    net::UdpSocket,
     path::{Path, PathBuf},
     sync::Arc,
 };
 
-use crate::{
-    core::{
-        DATA_BLOCK_SIZE, DEFAULT_RETRY_COUNT, ERROR_CODE_ACCESS_VIOLATION,
-        ERROR_CODE_FILE_NOT_FOUND, ERROR_CODE_ILLEGAL_OP, ERROR_CODE_SEE_MSG, ETH_FRAME_LEN,
-        INVALID_DATA_ERROR, OPCODE_ACK, OPCODE_DATA, OPCODE_ERROR, OPCODE_RRQ, OPCODE_WRQ,
-        TftpError, TftpPacket, error_msg_from_code, is_valid_filename, opcode_from_raw_data,
-        recv_retry, send_retry, transmission,
-    },
-    elog,
+use crate::core::{
+    DEFAULT_RETRY_COUNT, ERROR_CODE_ACCESS_VIOLATION, TftpError, TftpPacket, error_msg_from_code,
+    is_valid_filename, send_retry, transmission,
 };
 
 pub fn parse_args(args: &[String]) -> Result<Option<PathBuf>, String> {

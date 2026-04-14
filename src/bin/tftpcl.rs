@@ -2,15 +2,11 @@
  * This file provides the main function for "tftpcl", the tftp client.
  */
 
-use std::{
-    env::{self, args},
-    net::SocketAddr,
-    process::exit,
-};
+use std::{env::args, net::SocketAddr};
 
 use tftp::{
     core::TftpError,
-    elog, elog_fatal,
+    elog_fatal,
     tftpcl_util::{TftpAction, get_file, help_info_tftpcl, parse_args, put_file},
 };
 

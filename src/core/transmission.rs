@@ -4,7 +4,6 @@ use std::{
     fs::{self, File, OpenOptions},
     io::{BufReader, BufWriter, Error, ErrorKind, Read, Write},
     net::{SocketAddr, UdpSocket},
-    os::unix::fs::MetadataExt,
     path::PathBuf,
     sync::Arc,
 };
@@ -180,6 +179,7 @@ where
                         error_msg: error_msg.clone(),
                     };
 
+                    send_retry(socket, None, &error_pkt.serialize()?, 1)?;
                     return Err(error_msg.into());
                 }
             }
@@ -227,6 +227,7 @@ where
                             error_msg: err_msg.clone(),
                         };
 
+                        send_retry(socket, None, &err_pkt.serialize()?, 1)?;
                         return Err(err_msg.into());
                     }
                 }
