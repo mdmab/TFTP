@@ -17,7 +17,9 @@ cargo build --release
 ```
 
 **Note**: This will also create `libtftp.rlib`, the library containing common
-dependencies for both. To build `tftpcl` or `tftpd` independently:
+dependencies for both.
+
+To build `tftpcl` or `tftpd` independently:
 
 ```bash
 # This will create "tftpcl" only.
