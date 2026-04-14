@@ -178,6 +178,7 @@ fn main() {
                 thread::spawn(move || {
                     if let Err(err) = send_file(root_dir, &filename, &mode, &socket) {
                         elog!("{}", err);
+                        elog!("Failed to send {} to {}", filename, client_addr);
                     } else {
                         elog!("Successfully sent {} to {}.", filename, client_addr);
                     }
@@ -187,6 +188,7 @@ fn main() {
                 thread::spawn(move || {
                     if let Err(err) = receive_file(root_dir, &filename, &mode, &socket) {
                         elog!("{}", err);
+                        elog!("Failed to receive {} from {}", filename, client_addr);
                     } else {
                         elog!("Successfully received {} from {}.", filename, client_addr);
                     }

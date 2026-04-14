@@ -212,6 +212,7 @@ pub enum TftpError {
     Io(io::Error),
     /* The first argument is the message, the 2nd one is whether it is fatal or not. */
     Msg(String, bool),
+    ErrorPacket(u16, String),
 }
 
 impl TftpError {
@@ -222,6 +223,7 @@ impl TftpError {
                 ErrorKind::TimedOut | ErrorKind::WouldBlock | ErrorKind::Interrupted => false,
                 _ => true,
             },
+            TftpError::ErrorPacket(_, _) => false,
         }
     }
 }
@@ -253,6 +255,9 @@ impl fmt::Display for TftpError {
         match self {
             TftpError::Io(error) => write!(f, "IoError - {}: {}", error.kind(), error.to_string()),
             TftpError::Msg(msg, _) => write!(f, "Custom: {}", msg),
+            TftpError::ErrorPacket(err_code, err_msg) => {
+                write!(f, "TFTP error {}: {}", err_code, err_msg)
+            }
         }
     }
 }

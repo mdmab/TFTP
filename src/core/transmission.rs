@@ -63,11 +63,11 @@ where
             let error_msg: String;
 
             (error_code, error_msg) = match err.kind() {
-                ErrorKind::NotFound => (
+                ErrorKind::NotFound | ErrorKind::IsADirectory => (
                     ERROR_CODE_FILE_NOT_FOUND,
                     error_msg_from_code(ERROR_CODE_FILE_NOT_FOUND),
                 ),
-                ErrorKind::PermissionDenied | ErrorKind::IsADirectory => (
+                ErrorKind::PermissionDenied => (
                     ERROR_CODE_ACCESS_VIOLATION,
                     error_msg_from_code(ERROR_CODE_ACCESS_VIOLATION),
                 ),
@@ -82,6 +82,7 @@ where
                 error_msg: error_msg.clone(),
             };
 
+            send_retry(socket, None, &error_pkt.serialize()?, 1)?;
             return Err(err.into());
         }
     };
@@ -213,8 +214,9 @@ where
                         continue 'recv_loop;
                     } else {
                         /*
-                         * Future loop is a protocol violation. Send an ERROR packet and terminate.
-                         */
+                        * Future DATA packet is a protocol violation. Send an ERROR packet
+                          and terminate.
+                        */
                         let (err_code, err_msg): (u16, String) = (
                             ERROR_CODE_ILLEGAL_OP,
                             error_msg_from_code(ERROR_CODE_ILLEGAL_OP),
@@ -313,14 +315,40 @@ where
     const TEMP_FILENAME: &str = ".tmp.tftpcl";
     let temp_file_path: PathBuf = root_dir.as_ref().join(TEMP_FILENAME);
 
-    let mut file_buf: BufWriter<File> = BufWriter::new(
-        OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open(&temp_file_path)
-            .map_err(|err: Error| err.to_string())?,
-    );
+    let file: File = match OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&temp_file_path)
+    {
+        Ok(file) => file,
+        Err(err) => {
+            let (err_code, err_msg): (u16, String) = match err.kind() {
+                ErrorKind::NotFound | ErrorKind::IsADirectory => (
+                    ERROR_CODE_FILE_NOT_FOUND,
+                    error_msg_from_code(ERROR_CODE_FILE_NOT_FOUND),
+                ),
+                ErrorKind::PermissionDenied => (
+                    ERROR_CODE_ACCESS_VIOLATION,
+                    error_msg_from_code(ERROR_CODE_ACCESS_VIOLATION),
+                ),
+                _ => (
+                    ERROR_CODE_SEE_MSG,
+                    "Server error when attempting to open file.".to_owned(),
+                ),
+            };
+
+            let err_pkt: TftpPacket = TftpPacket::Error {
+                error_code: err_code,
+                error_msg: err_msg.clone(),
+            };
+
+            send_retry(socket, None, &err_pkt.serialize()?, 1)?;
+            return Err(err_msg.into());
+        }
+    };
+
+    let mut file_buf: BufWriter<File> = BufWriter::new(file);
 
     /* Now, receive DATA from the server or receive ERROR packet. */
     loop {
@@ -407,15 +435,14 @@ where
                 error_code,
                 error_msg,
             } => {
-                /*
-                * In case of errors, terminate after sending ERROR packet. No transmission
-                  happens
-                */
-                if error_code == ERROR_CODE_SEE_MSG {
-                    return Err(error_msg.into());
-                }
-
-                return Err(error_msg_from_code(error_code).into());
+                return Err(TftpError::ErrorPacket(
+                    error_code,
+                    if error_code == ERROR_CODE_SEE_MSG {
+                        error_msg
+                    } else {
+                        error_msg_from_code(error_code)
+                    },
+                ));
             }
             _ => {
                 /*
