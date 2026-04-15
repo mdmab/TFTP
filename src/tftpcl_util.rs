@@ -239,7 +239,7 @@ pub fn get_file(
     send_retry(
         &socket,
         Some(server_addr),
-        &packet.serialize()?,
+        &packet.to_byte_array()?,
         DEFAULT_RETRY_COUNT,
     )?;
 
@@ -296,7 +296,7 @@ pub fn put_file(
     send_retry(
         &socket,
         Some(server_addr),
-        &packet.serialize()?,
+        &packet.to_byte_array()?,
         DEFAULT_RETRY_COUNT,
     )?;
 
@@ -327,12 +327,12 @@ pub fn put_file(
             error_msg: "Unknown TID.".to_owned(),
         };
 
-        send_retry(&socket, Some(sender_addr), &error_pkt.serialize()?, 1)?;
+        send_retry(&socket, Some(sender_addr), &error_pkt.to_byte_array()?, 1)?;
     }
 
     /* Check if it is an ACK packet with data block set to 0. */
     let recv_packet: TftpPacket = match opcode_from_raw_data(&buf[..size_of::<u16>()])? {
-        OPCODE_ACK | OPCODE_ERROR => TftpPacket::deserialize(&buf[..rd_size])?,
+        OPCODE_ACK | OPCODE_ERROR => TftpPacket::from_byte_array(&buf[..rd_size])?,
         _ => {
             return Err(INVALID_DATA_ERROR.into());
         }
@@ -372,7 +372,7 @@ pub fn put_file(
                     error_msg: err_msg.clone(),
                 };
 
-                send_retry(&socket, None, &packet.serialize()?, 1)?;
+                send_retry(&socket, None, &packet.to_byte_array()?, 1)?;
                 return Err(err_msg.into());
             }
         }
@@ -397,7 +397,7 @@ pub fn put_file(
                 error_msg: "Illegal operation.".to_owned(),
             };
 
-            send_retry(&socket, None, &error_pkt.serialize()?, 1)?;
+            send_retry(&socket, None, &error_pkt.to_byte_array()?, 1)?;
 
             return Err("Invalid packet received.".into());
         }

@@ -81,7 +81,7 @@ where
                 error_msg: error_msg.clone(),
             };
 
-            send_retry(socket, None, &error_pkt.serialize()?, 1)?;
+            send_retry(socket, None, &error_pkt.to_byte_array()?, 1)?;
             return Err(err.into());
         }
     };
@@ -117,7 +117,7 @@ where
                     error_msg: error_msg.clone(),
                 };
 
-                send_retry(socket, None, &error_pkt.serialize()?, 1)?;
+                send_retry(socket, None, &error_pkt.to_byte_array()?, 1)?;
 
                 return Err(err.into());
             }
@@ -129,7 +129,12 @@ where
             data: byte_arr[..data_rd_size].to_owned(),
         };
 
-        send_retry(socket, None, &data_pkt.serialize()?, DEFAULT_RETRY_COUNT)?;
+        send_retry(
+            socket,
+            None,
+            &data_pkt.to_byte_array()?,
+            DEFAULT_RETRY_COUNT,
+        )?;
         on_send(expected_block_num, data_rd_size);
 
         /*
@@ -149,7 +154,7 @@ where
                             ),
                         };
 
-                        send_retry(socket, None, &error_pkt.serialize()?, 1)?;
+                        send_retry(socket, None, &error_pkt.to_byte_array()?, 1)?;
                         return Err(err.into());
                     }
                     Ok(res) => res,
@@ -179,18 +184,18 @@ where
                         error_msg: error_msg.clone(),
                     };
 
-                    send_retry(socket, None, &error_pkt.serialize()?, 1)?;
+                    send_retry(socket, None, &error_pkt.to_byte_array()?, 1)?;
                     return Err(error_msg.into());
                 }
             }
 
             /*
-            * Deserialize and handle ACK or ERROR packet.
+            * from_byte_array and handle ACK or ERROR packet.
             * For ACK packets, check if the expected data packet has been acknowledgement. ACK for
               other data block numbers is an error.
             * For ERROR packets, show the error message and terminate the connection.
             */
-            match TftpPacket::deserialize(&byte_arr[..ack_rd_size])? {
+            match TftpPacket::from_byte_array(&byte_arr[..ack_rd_size])? {
                 TftpPacket::Ack { block_num } => {
                     if block_num == expected_block_num {
                         /*
@@ -227,7 +232,7 @@ where
                             error_msg: err_msg.clone(),
                         };
 
-                        send_retry(socket, None, &err_pkt.serialize()?, 1)?;
+                        send_retry(socket, None, &err_pkt.to_byte_array()?, 1)?;
                         return Err(err_msg.into());
                     }
                 }
@@ -306,7 +311,7 @@ where
                 error_msg: "Unknown TID.".to_owned(),
             };
 
-            send_retry(&socket, Some(peer_addr), &error_pkt.serialize()?, 1)?;
+            send_retry(&socket, Some(peer_addr), &error_pkt.to_byte_array()?, 1)?;
         }
     } else {
         (rd_size, _) = recv_retry(socket, &mut byte_arr, DEFAULT_RETRY_COUNT, true)?;
@@ -344,7 +349,7 @@ where
                 error_msg: err_msg.clone(),
             };
 
-            send_retry(socket, None, &err_pkt.serialize()?, 1)?;
+            send_retry(socket, None, &err_pkt.to_byte_array()?, 1)?;
             return Err(err_msg.into());
         }
     };
@@ -360,12 +365,11 @@ where
           call, when we were searching for peer address to make a connection.
         */
         let recv_packet: TftpPacket = match opcode_from_raw_data(&byte_arr[..rd_size])? {
-            OPCODE_DATA | OPCODE_ERROR => {
-                TftpPacket::deserialize(&byte_arr[..rd_size]).map_err(|err: String| {
+            OPCODE_DATA | OPCODE_ERROR => TftpPacket::from_byte_array(&byte_arr[..rd_size])
+                .map_err(|err: String| {
                     _ = fs::remove_file(&temp_file_path);
                     err
-                })?
-            }
+                })?,
             _ => {
                 _ = fs::remove_file(&temp_file_path);
                 return Err(INVALID_DATA_ERROR.into());
@@ -397,7 +401,12 @@ where
                         block_num: block_num,
                     };
 
-                    send_retry(&socket, None, &ack_packet.serialize()?, DEFAULT_RETRY_COUNT)?;
+                    send_retry(
+                        &socket,
+                        None,
+                        &ack_packet.to_byte_array()?,
+                        DEFAULT_RETRY_COUNT,
+                    )?;
                 } else if block_num == data_block_expected {
                     on_recv(block_num, data.len());
                     /* Expected data block arrived. */
@@ -413,7 +422,12 @@ where
                         block_num: block_num,
                     };
 
-                    send_retry(&socket, None, &ack_packet.serialize()?, DEFAULT_RETRY_COUNT)?;
+                    send_retry(
+                        &socket,
+                        None,
+                        &ack_packet.to_byte_array()?,
+                        DEFAULT_RETRY_COUNT,
+                    )?;
 
                     /* If data size is less than block size, terminate, else expect next block. */
                     if data.len() < DATA_BLOCK_SIZE {
@@ -456,7 +470,7 @@ where
                     error_msg: "Illegal operation.".to_owned(),
                 };
 
-                send_retry(&socket, None, &error_pkt.serialize()?, 1)?;
+                send_retry(&socket, None, &error_pkt.to_byte_array()?, 1)?;
 
                 return Err("Invalid packet received.".into());
             }

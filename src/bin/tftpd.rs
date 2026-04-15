@@ -99,7 +99,7 @@ fn main() {
                 match send_retry(
                     &sock_tftpd,
                     Some(client_addr),
-                    &err_pkt.serialize().unwrap(),
+                    &err_pkt.to_byte_array().unwrap(),
                     1,
                 ) {
                     Ok(_) => {}
@@ -123,7 +123,7 @@ fn main() {
         * If ERROR packet, show the error message and terminate the connection and look for another
           connection.
         */
-        let packet: TftpPacket = match TftpPacket::deserialize(&buf[..rd_size]) {
+        let packet: TftpPacket = match TftpPacket::from_byte_array(&buf[..rd_size]) {
             Err(err) => {
                 elog!("{}", err);
                 continue;

@@ -57,7 +57,7 @@ pub fn send_file(
             error_msg: err_msg.clone(),
         };
 
-        send_retry(socket, None, &err_pkt.serialize()?, 1)?;
+        send_retry(socket, None, &err_pkt.to_byte_array()?, 1)?;
         return Err(err_msg.into());
     }
 
@@ -108,13 +108,18 @@ pub fn receive_file(
             error_msg: err_msg.clone(),
         };
 
-        send_retry(socket, None, &err_pkt.serialize()?, 1)?;
+        send_retry(socket, None, &err_pkt.to_byte_array()?, 1)?;
         return Err(err_msg.into());
     }
 
     /* WRQ request has been handled. Send an ACK packet with data block set to 0. */
     let ack_packet: TftpPacket = TftpPacket::Ack { block_num: 0 };
-    send_retry(socket, None, &ack_packet.serialize()?, DEFAULT_RETRY_COUNT)?;
+    send_retry(
+        socket,
+        None,
+        &ack_packet.to_byte_array()?,
+        DEFAULT_RETRY_COUNT,
+    )?;
 
     /* Start receiving file. */
     let mut total_size: usize = 0;

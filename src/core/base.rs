@@ -58,7 +58,7 @@ pub enum TftpPacket {
 
 impl TftpPacket {
     /// Converts TFTPPacket instance to a raw byte stream.
-    pub fn serialize(&self) -> Result<Vec<u8>, String> {
+    pub fn to_byte_array(&self) -> Result<Vec<u8>, String> {
         let mut buf: Vec<u8>;
 
         match self {
@@ -106,7 +106,7 @@ impl TftpPacket {
     }
 
     /// Converts a raw byte stream into an instance of TFTPPacket.
-    pub fn deserialize(byte_arr: &[u8]) -> Result<TftpPacket, String> {
+    pub fn from_byte_array(byte_arr: &[u8]) -> Result<TftpPacket, String> {
         let mut buf: &[u8] = byte_arr;
         let packet: TftpPacket;
 
@@ -527,10 +527,10 @@ mod tests {
 
         eprintln!("Before serialization:\n{:?}\n", packet);
 
-        let buf: Vec<u8> = packet.serialize().unwrap();
+        let buf: Vec<u8> = packet.to_byte_array().unwrap();
         eprintln!("Serialized array:\n{:?}\n", buf);
 
-        let pkt: TftpPacket = TftpPacket::deserialize(&buf).unwrap();
+        let pkt: TftpPacket = TftpPacket::from_byte_array(&buf).unwrap();
         eprintln!("Deserialized packet:\n{:?}\n", pkt);
     }
 }
