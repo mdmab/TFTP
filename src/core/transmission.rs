@@ -338,10 +338,7 @@ where
                     ERROR_CODE_ACCESS_VIOLATION,
                     error_msg_from_code(ERROR_CODE_ACCESS_VIOLATION),
                 ),
-                _ => (
-                    ERROR_CODE_SEE_MSG,
-                    "Server error when attempting to open file.".to_owned(),
-                ),
+                _ => (ERROR_CODE_SEE_MSG, "Server error.".to_owned()),
             };
 
             let err_pkt: TftpPacket = TftpPacket::Error {
